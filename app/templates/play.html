@@ -1,0 +1,171 @@
+
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+<div class="row">
+	<div class="col-md-12">
+		<h1> <p>
+		{# Sets the correct semantics since different words are needed to describe event and people #}
+		{% if first_stimulus.stimulus_type == "person" %}
+			Did {{ first_stimulus.name }} live
+		{% elif first_stimulus.stimulus_type == "event" %}
+			Did the {{ first_stimulus.name }} take place
+		{% else %}
+			Did {{ first_stimulus.name }} come
+		{% endif %}
+		before or after
+		{% if second_stimulus.stimulus_type == "event" %} 
+		 	the
+		{% endif %}
+		{{ second_stimulus.name }}? 
+		</p></h1>
+	</div>
+</div>
+<div class="row">
+	<br><br><br><br>
+</div>
+<div class="row">
+	<div class="col-md-4">
+		<img src= {{ "static/images/" + first_stimulus.image }}>
+		<p> <b> {{ first_stimulus.name }} </b> </p>
+		<p> {{ first_stimulus.description }} </p>
+		<p id="dates_1" class="hiddeninfo"> 
+          {# Checks whether the years are BC or AD. Adds BC or AD to end of years #}
+          {% if first_stimulus.start_year < 0 -%}
+          	   {# The interesting line below replaces abs() since that doesn't exist in Jinja templates #}
+               {{ (first_stimulus.start_year * -2) + first_stimulus.start_year }} BC
+          {% else -%}
+               {{ first_stimulus.start_year}} AD
+          {% endif -%}
+          -
+          {% if first_stimulus.end_year < 0 -%}
+               {{ (first_stimulus.end_year * -2) + first_stimulus.end_year }} BC
+          {% else -%}
+               {{ first_stimulus.end_year}} AD
+          {% endif -%}
+         </p>
+		<p id="wiki_1" class="hiddeninfo"> <a href="{{ first_stimulus.wiki_link }}" style="color:white;text-decoration:underline;" target="_blank"> Read more on Wikipedia </a> </p>
+	</div>
+	<div class="col-md-4">
+		<h2 style="color:orange;font-size:54px"><br><br>VS</h2>
+	</div>
+	<div class="col-md-4">
+		<img src={{ "static/images/" + second_stimulus.image}}>
+		<p> <b> {{ second_stimulus.name }} </b> </p>
+		<p> {{ second_stimulus.description }} </p>
+		<p id="dates_2" class="hiddeninfo">           
+		{# Checks whether the years are BC or AD. Adds BC or AD to end of years #}
+          {% if second_stimulus.start_year < 0 -%}
+          	   {# The interesting line below replaces abs() since that doesn't exist in Jinja templates #}
+               {{ (second_stimulus.start_year * -2) + second_stimulus.start_year }} BC
+          {% else -%}
+               {{ second_stimulus.start_year}} AD
+          {% endif -%}
+          -
+          {% if second_stimulus.end_year < 0 -%}
+               {{ (second_stimulus.end_year * -2) + second_stimulus.end_year }} BC
+          {% else -%}
+               {{ second_stimulus.end_year }} AD
+          {% endif -%}
+          </p>
+		<p id="wiki_2" class="hiddeninfo"> <a href="{{ second_stimulus.wiki_link }}" style="color:white;text-decoration:underline;" target="_blank"> Read more on Wikipedia </a> </p>
+	</div>
+</div>
+<div class="row">
+	<br><br><br><br>
+</div>
+<div class="row">
+	<div class="col-md-4 beforeAnswer" id="beforebutton">
+		<input type="button" id="before" class="btn-lg" data-buttonanswer="before" value="Before">
+	</div>
+	<div class="col-md-4 beforeAnswer" id="contemporarybutton">
+		<input type="button" id="contemporary" class="btn-lg" data-buttonanswer="contemporary" value="Contemporary">
+	</div>
+	<div class="col-md-4 beforeAnswer" id="afterbutton">
+		<input type="button" id="after" class="btn-lg" data-buttonanswer="after" value="After">
+	</div>
+</div>
+</div>
+<div class="row">
+	<div class="col-md-12 hiddeninfo" align="center" id="answerFeedback">
+		<p id="resultText" style="font-size:25px;"> <!-- This is where innerHTML is written --> </p>
+		<a href="{{url_for('play')}}" id="next" class=" btn btn-lg"> Go next </a>
+		<br><br>
+	</div>
+</div>
+
+</div>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+
+<script>
+
+
+// The function calls a Python function that evaluates whether the guess is right
+$(function() {
+    $('#before, #after, #contemporary').bind('click', function() {
+      var $this = $(this);
+      var buttonanswer  = $this.data('buttonanswer')
+      $.getJSON('/_evaluate_answer', {
+      	// The variables that are passed to Python for evaluation
+      	answer:buttonanswer,
+        first_start_year: {{first_stimulus.start_year}},
+        first_end_year: {{ first_stimulus.end_year}},
+        second_start_year: {{ second_stimulus.start_year}},
+        second_end_year: {{ second_stimulus.end_year}}
+      }, function(data) {
+        // data.result is a boolean which is True if guess was right, otherwise False
+        // updatePostAnswer hides guess-buttons and shows feedback and continue-button
+        updatePostAnswer(data.result)
+  
+      });
+    });
+  });
+
+
+function updatePostAnswer(result)
+	{
+
+		// remove the answer buttons with display:none. The buttons are all tagged as beforeAnswer
+
+		// get all the elements that are tagged with the beforeAnswer class (the answer buttons)
+		buttons = document.getElementsByClassName("beforeAnswer")
+		for(i=0;i< buttons.length;i++)
+		{
+			// remove them individually 
+			el = document.getElementById(buttons[i].id)
+			el.style.display="none"
+		}
+
+		// shows guess feedback 
+
+		if(result)
+		{
+			// when the answer was right
+			document.getElementById("answerFeedback").style.background="#009933";
+			document.getElementById("resultText").innerHTML="That's right! Well done.";
+		}
+		else
+		{
+			// when the answer was wrong
+			document.getElementById("answerFeedback").style.background="#FF8000"
+			document.getElementById("resultText").innerHTML="Sorry, that's not right"
+		}
+
+		// fade in the wiki-links and the start and end years by using visbility:visible
+		hiddenElements = document.getElementsByClassName("hiddeninfo")
+		for(i=0;i<hiddenElements.length; i++)
+		{
+			// fade in the post-answer menu options individually
+			el = document.getElementById(hiddenElements[i].id)
+			el.style.visibility="visible"
+			el.style.transition="opacity 1s linear"
+			el.style.opacity="1"
+		}
+	}
+
+</script>
+
+
+{% endblock %}
