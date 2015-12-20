@@ -2,9 +2,6 @@ from app import app, db
 from flask import render_template, jsonify, request, session
 from models import Stimulus
 from sqlalchemy.sql import func
-import convertdate
-from convertdate import hebrew
-
 
 @app.route('/')
 def index():
@@ -32,21 +29,13 @@ def evaluate_answer():
 	second_start_year = request.args.get('second_start_year', 0, type=int)
 	second_end_year = request.args.get('second_end_year', 0, type=int)
 
-	# this is too much fun... transfering gregorian dates into hebrew to avoid comparing AD dates to BC dates
-	hebrew_1_start = hebrew.from_gregorian(first_start_year, 1, 1)
-	hebrew_1_end = hebrew.from_gregorian(first_end_year, 1, 1)
-	hebrew_2_start = hebrew.from_gregorian(second_start_year, 1, 1)
-	hebrew_2_end = hebrew.from_gregorian(second_end_year, 1, 1)
-
 	# the players guess is requested from the template
 	guess = request.args.get('answer', 0, type=str)	
 
-
 	# finds the correct answer
-	if hebrew_1_end < hebrew_2_start:
-		print hebrew_1_end, hebrew_2_start
+	if first_start_year < second_start_year:
 		answer = "before"
-	elif hebrew_2_end < hebrew_1_start:
+	elif second_end_year < first_start_year:
 		answer = "after" 
 	else:
 		answer = "contemporary"
@@ -54,7 +43,7 @@ def evaluate_answer():
 	if guess == answer:
 		result = True
 	else:
-		result = False 
+		result = False
 
 	# returns a boolean to the template
-	return jsonify(result=result)	
+	return jsonify(result=result)
